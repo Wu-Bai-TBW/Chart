@@ -1,28 +1,33 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Color = UnityEngine.Color;
 
 namespace M_Chart
 {
+    [RequireComponent(typeof(CanvasRenderer))]
     public class Chart : MaskableGraphic
     {
-        [SerializeField] private float _LineWight;
+        [SerializeField] private float Padding_Left;    // 左内边距
+        [SerializeField] private float Padding_Right;   // 右内边距
+        [SerializeField] private float Padding_Top;     // 上内边距
+        [SerializeField] private float Padding_Bottom;  // 下内边距
 
-        private ChartAxis_X chartAxis_X;
-        private ChartAxis_Y chartAxis_Y;
-        private ChartAxis_Z chartAxis_Z;
+
+        [SerializeField] private ChartAxis_X chartAxis_X;
+        [SerializeField] private ChartAxis_Y chartAxis_Y;
+        [SerializeField] private ChartAxis_Z chartAxis_Z;
 
         protected override void OnPopulateMesh(VertexHelper vh)
         {
-            AxisInit(rectTransform);
-
-            //base.OnPopulateMesh(vh);
             vh.Clear();
-            UIVertex[] Axis_X = GetUIVertices(color, chartAxis_X.GetAxisPoint(_LineWight));
-            UIVertex[] Axis_Y = GetUIVertices(color, chartAxis_Y.GetAxisPoint(_LineWight));
-            vh.AddUIVertexQuad(Axis_X);
-            vh.AddUIVertexQuad(Axis_Y);
+            Rect mainRect = GetMainRect();
+
+            DrawAxis(vh, chartAxis_X.GetAxisColor, chartAxis_X.GetAxisPoint(mainRect));
+            DrawAxis(vh, chartAxis_Y.GetAxisColor, chartAxis_Y.GetAxisPoint(mainRect));
+
+            DrawScaleLine(vh, chartAxis_X.GetScaleLineColor, chartAxis_X.GetScaleLinePoint(mainRect));
+            DrawScaleLine(vh, chartAxis_Y.GetScaleLineColor, chartAxis_Y.GetScaleLinePoint(mainRect));
         }
 
         private UIVertex[] GetUIVertices(Color _Color, params Vector2[] points)
@@ -43,147 +48,54 @@ namespace M_Chart
         //================================================================================
 
         /// <summary>
-        /// 轴向初始化
+        /// 获取主矩形
         /// </summary>
-        /// <param name="_RectTransform"></param>
-        private void AxisInit(RectTransform _RectTransform)
+        private Rect GetMainRect()
         {
-            if (chartAxis_X == null)
-            {
-                chartAxis_X = new ChartAxis_X(_RectTransform);
-            }
-            if (chartAxis_Y == null)
-            {
-                chartAxis_Y = new ChartAxis_Y(_RectTransform);
-            }
-            if (chartAxis_Z == null)
-            {
-                chartAxis_Z = new ChartAxis_Z(_RectTransform);
-            }
-        }
-    }
-    public abstract class ChartAxis
-    {
-        protected RectTransform m_RectTransform;
+            Rect rect = rectTransform.rect;
+            rect.width -= (Padding_Left + Padding_Right);
+            rect.height -= (Padding_Top + Padding_Bottom);
+            rect.x += Padding_Left;
+            rect.y += Padding_Bottom;
 
-        protected ChartAxis(RectTransform _RectTransform)
-        {
-            m_RectTransform = _RectTransform;
+            return rect;
         }
-
-        //===============================================================================
 
         /// <summary>
-        /// 返回轴线绘制点
+        /// 绘制轴
         /// </summary>
-        /// <param name="_AxisLineWight"></param>
-        /// <returns></returns>
-        public abstract Vector2[] GetAxisPoint(float _AxisLineWight);
+        /// <param name="vh"></param>
+        /// <param name="_Color"></param>
+        /// <param name="points"></param>
+        private void DrawAxis(VertexHelper vh, Color _Color, Vector2[] points)
+        {
+            if (points == null)
+            {
+                return;
+            }
+
+            UIVertex[] Axis = GetUIVertices(_Color, points);
+            vh.AddUIVertexQuad(Axis);
+        }
+
         /// <summary>
-        /// 返回刻度线绘制点
+        /// 绘制刻度线
         /// </summary>
-        /// <param name="_TickMarkLineWight"></param>
-        /// <returns></returns>
-        public abstract Vector2[] GetTickMarkPoint(float _TickMarkLineWight);
-
-        //===============================================================================
-        /// <summary>
-        /// 获取RectTransform
-        /// </summary>
-        /// <returns></returns>
-        protected Rect GetTransformRect()
+        /// <param name="vh"></param>
+        /// <param name="_Color"></param>
+        /// <param name="points"></param>
+        private void DrawScaleLine(VertexHelper vh, Color _Color, List<Vector2[]> points)
         {
-            return m_RectTransform.rect;
+            if (points == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                UIVertex[] Axis = GetUIVertices(_Color, points[i]);
+                vh.AddUIVertexQuad(Axis);
+            }
         }
     }
-    public class ChartAxis_X : ChartAxis
-    {
-        public ChartAxis_X(RectTransform _RectTransform) : base(_RectTransform)
-        {
-
-        }
-
-        public override Vector2[] GetAxisPoint(float _AxisLineWight)
-        {
-            Rect rect = GetTransformRect();
-            float width = rect.width;
-            float height = rect.height;
-
-            Vector2 r1 = new Vector2();
-            Vector2 r2 = new Vector2();
-            Vector2 r3 = new Vector2();
-            Vector2 r4 = new Vector2();
-
-            r1.x = -width * .5f;
-            r1.y = -height * .5f;
-
-            r2.x = -width * .5f;
-            r2.y = height * .5f;
-
-            r3.x = -width * .5f + _AxisLineWight;
-            r3.y = height * .5f;
-
-            r4.x = -width * .5f + _AxisLineWight;
-            r4.y = -height * .5f;
-
-            return new Vector2[] { r1, r2, r3, r4 };
-        }
-        public override Vector2[] GetTickMarkPoint(float _TickMarkLineWight)
-        {
-            return null;
-        }
-    }
-    public class ChartAxis_Y : ChartAxis
-    {
-        public ChartAxis_Y(RectTransform _RectTransform) : base(_RectTransform)
-        {
-
-        }
-        public override Vector2[] GetAxisPoint(float _AxisLineWight)
-        {
-            Rect rect = GetTransformRect();
-            float width = rect.width;
-            float height = rect.height;
-
-            Vector2 r1 = new Vector2();
-            Vector2 r2 = new Vector2();
-            Vector2 r3 = new Vector2();
-            Vector2 r4 = new Vector2();
-
-            r1.x = -width * .5f;
-            r1.y = -height * .5f;
-
-            r2.x = -width * .5f;
-            r2.y = -height * .5f + _AxisLineWight;
-
-            r3.x = width * .5f;
-            r3.y = -height * .5f + _AxisLineWight;
-
-            r4.x = width * .5f;
-            r4.y = -height * .5f;
-
-            return new Vector2[] { r1, r2, r3, r4 };
-        }
-        public override Vector2[] GetTickMarkPoint(float _TickMarkLineWight)
-        {
-            return null;
-        }
-    }
-    public class ChartAxis_Z : ChartAxis
-    {
-        public ChartAxis_Z(RectTransform _RectTransform) : base(_RectTransform)
-        {
-
-        }
-        public override Vector2[] GetAxisPoint(float _AxisLineWight)
-        {
-            return null;
-        }
-
-        public override Vector2[] GetTickMarkPoint(float _TickMarkLineWight)
-        {
-            return null;
-        }
-    }
-
 }
